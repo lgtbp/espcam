@@ -34,6 +34,10 @@
 #define PIN_NUM_CS 13
 #endif //USE_SPI_MODE
 
+#define LED1_GPIO 4
+#define LED2_GPIO 16
+#define KEY_GPIO 12
+
 #define LED_GPIO CONFIG_LED_GPIO
 #define BOARD_ESP32CAM_AITHINKER
 // WROVER-KIT PIN Map
@@ -159,8 +163,8 @@ int fatfs_init(void)
     // does make a difference some boards, so we do that here.
     gpio_set_pull_mode(15, GPIO_PULLUP_ONLY); // CMD, needed in 4- and 1- line modes
     gpio_set_pull_mode(2, GPIO_PULLUP_ONLY);  // D0, needed in 4- and 1-line modes
-    gpio_set_pull_mode(4, GPIO_PULLUP_ONLY);  // D1, needed in 4-line mode only
-    gpio_set_pull_mode(12, GPIO_PULLUP_ONLY); // D2, needed in 4-line mode only
+                                              //    gpio_set_pull_mode(4, GPIO_PULLUP_ONLY);  // D1, needed in 4-line mode only
+                                              //    gpio_set_pull_mode(12, GPIO_PULLUP_ONLY); // D2, needed in 4-line mode only
     gpio_set_pull_mode(13, GPIO_PULLUP_ONLY); // D3, needed in 4- and 1-line modes
 
     ret = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
@@ -211,9 +215,15 @@ int fatfs_init(void)
     return 0;
 }
 
+void gpio_init(void)
+{
+    gpio_pad_select_gpio(LED_GPIO);
+    gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_GPIO, 0);
+}
 void app_main(void)
 {
-    int i = 0, ret, num = 0;
+    int num = 0, flash_flg = 1;
     char buf[24];
     // esp_err_t err = nvs_flash_init();
     // if (err != ESP_OK)
@@ -221,24 +231,20 @@ void app_main(void)
     //     ESP_ERROR_CHECK(nvs_flash_erase());
     //     ESP_ERROR_CHECK(nvs_flash_init());
     // }
-
     init_camera();
-    ret = fatfs_init();
-
-    gpio_pad_select_gpio(LED_GPIO);
-    gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(LED_GPIO, 0);
+    fatfs_init();
+    gpio_init();
     while (1)
     {
-        sprintf(buf, "/sdcard/p%d.jpg", num);
-        num++;
-        printf("Taking picture[%s]\r\n ", buf);
-        gpio_set_level(LED_GPIO, 1);
-        camera_fb_t *pic = esp_camera_fb_get();
-        gpio_set_level(LED_GPIO, 0);
         if (fat_flg)
         {
-
+            sprintf(buf, "/sdcard/p%d.jpg", num);
+            printf("Taking picture[%s]\r\n ", buf);
+            num++;
+            if (flash_flg)
+                gpio_set_level(LED_GPIO, 1);
+            camera_fb_t *pic = esp_camera_fb_get();
+            gpio_set_level(LED_GPIO, 0);
             FILE *f = fopen(buf, "w");
             if (f == NULL)
             {
@@ -250,9 +256,6 @@ void app_main(void)
                 fclose(f);
             }
         }
-        // use pic->buf to access the image
-        //printf("Picture taken! Its size was: %zu bytes\r\n", pic->len);
-
         vTaskDelay(10000 / portTICK_RATE_MS);
     }
 }
