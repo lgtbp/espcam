@@ -1,0 +1,14 @@
+menu "Example Configuration"
+
+    config LED_GPIO
+        int "LED GPIO number"
+        range 0 34
+        default 4
+        help
+            GPIO number (IOxx) to camera led on and off.
+
+            Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to blink.
+
+            GPIOs 35-39 are input-only so cannot be used as outputs.
+
+endmenu
